@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3084443982262198" crossorigin="anonymous"></script>
     <style>
         * {
             margin: 0;
@@ -83,22 +82,6 @@
             min-width: 120px;
         }
 
-        input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-            font-family: inherit;
-        }
-
-        input[type="text"]:focus, input[type="number"]:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
         select, input[type="number"] {
             width: 100%;
             padding: 10px;
@@ -141,16 +124,6 @@
             background: #f8f9fa;
             border-radius: 15px;
             display: none;
-        }
-
-        .qr-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 15px;
-            padding: 10px;
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 8px;
         }
 
         .qr-canvas {
@@ -206,16 +179,6 @@
         <h1>🔗 QR Code Generator</h1>
         
         <div class="input-group">
-            <label for="qrName">Tên QR Code (tùy chọn):</label>
-            <input 
-                type="text" 
-                id="qrName" 
-                placeholder="Ví dụ: QR Website công ty, QR Menu nhà hàng..."
-                maxlength="100"
-            >
-        </div>
-
-        <div class="input-group">
             <label for="textInput">Nhập nội dung cần tạo QR:</label>
             <textarea 
                 id="textInput" 
@@ -253,7 +216,6 @@
         <div class="error" id="errorMsg"></div>
 
         <div class="qr-result" id="qrResult">
-            <div class="qr-name" id="qrNameDisplay" style="display: none;"></div>
             <h3>Mã QR của bạn:</h3>
             <canvas id="qrCanvas" class="qr-canvas"></canvas>
             <div>
@@ -268,12 +230,10 @@
 
         function generateQR() {
             const textInput = document.getElementById('textInput');
-            const qrName = document.getElementById('qrName');
             const sizeSelect = document.getElementById('sizeSelect');
             const errorLevel = document.getElementById('errorLevel');
             const qrResult = document.getElementById('qrResult');
             const qrCanvas = document.getElementById('qrCanvas');
-            const qrNameDisplay = document.getElementById('qrNameDisplay');
             const errorMsg = document.getElementById('errorMsg');
 
             // Ẩn thông báo lỗi
@@ -281,7 +241,6 @@
             
             // Lấy giá trị input
             const text = textInput.value.trim();
-            const name = qrName.value.trim();
             const size = parseInt(sizeSelect.value);
             const level = errorLevel.value;
 
@@ -297,16 +256,15 @@
             }
 
             try {
-                // Tạo QR code với tên được vẽ trên canvas
-                createQRWithName(text, name, size, level);
-
-                // Hiển thị tên QR nếu có
-                if (name) {
-                    qrNameDisplay.textContent = name;
-                    qrNameDisplay.style.display = 'block';
-                } else {
-                    qrNameDisplay.style.display = 'none';
-                }
+                // Tạo QR code
+                qrCode = new QRious({
+                    element: qrCanvas,
+                    value: text,
+                    size: size,
+                    level: level,
+                    background: 'white',
+                    foreground: 'black'
+                });
 
                 // Hiển thị kết quả
                 qrResult.style.display = 'block';
@@ -323,72 +281,6 @@
             }
         }
 
-        function createQRWithName(text, name, size, level) {
-            const qrCanvas = document.getElementById('qrCanvas');
-            
-            // Tạo QR code tạm thời để lấy dữ liệu
-            const tempCanvas = document.createElement('canvas');
-            const tempQR = new QRious({
-                element: tempCanvas,
-                value: text,
-                size: size,
-                level: level,
-                background: 'white',
-                foreground: 'black'
-            });
-
-            // Tính toán kích thước canvas cuối cùng
-            const padding = 40;
-            const nameHeight = name ? 60 : 0;
-            const finalWidth = size + (padding * 2);
-            const finalHeight = size + nameHeight + (padding * 2);
-
-            // Thiết lập canvas chính
-            qrCanvas.width = finalWidth;
-            qrCanvas.height = finalHeight;
-            const ctx = qrCanvas.getContext('2d');
-
-            // Vẽ nền trắng
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, finalWidth, finalHeight);
-
-            // Vẽ tên QR ở phía trên (nếu có)
-            if (name) {
-                ctx.fillStyle = 'black';
-                ctx.font = 'bold 18px Arial, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                // Vẽ text với word wrap nếu quá dài
-                const maxWidth = finalWidth - (padding * 2);
-                const words = name.split(' ');
-                let line = '';
-                let y = padding + 30;
-                
-                for (let i = 0; i < words.length; i++) {
-                    const testLine = line + words[i] + ' ';
-                    const metrics = ctx.measureText(testLine);
-                    const testWidth = metrics.width;
-                    
-                    if (testWidth > maxWidth && i > 0) {
-                        ctx.fillText(line, finalWidth / 2, y);
-                        line = words[i] + ' ';
-                        y += 25;
-                    } else {
-                        line = testLine;
-                    }
-                }
-                ctx.fillText(line, finalWidth / 2, y);
-            }
-
-            // Vẽ QR code
-            const qrY = nameHeight + padding;
-            ctx.drawImage(tempCanvas, padding, qrY, size, size);
-
-            // Lưu reference để download
-            qrCode = { canvas: qrCanvas };
-        }
-
         function downloadQR(format) {
             if (!qrCode) {
                 showError('Chưa có QR code để tải xuống!');
@@ -396,21 +288,12 @@
             }
 
             try {
-                const canvas = qrCode.canvas || document.getElementById('qrCanvas');
-                const qrName = document.getElementById('qrName').value.trim();
+                const canvas = document.getElementById('qrCanvas');
                 const link = document.createElement('a');
                 
-                // Tạo tên file với tên QR và timestamp
+                // Tạo tên file với timestamp
                 const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-                let filename;
-                
-                if (qrName) {
-                    // Loại bỏ ký tự không hợp lệ trong tên file
-                    const safeName = qrName.replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_');
-                    filename = `${safeName}_${timestamp}.${format}`;
-                } else {
-                    filename = `qrcode_${timestamp}.${format}`;
-                }
+                const filename = `qrcode_${timestamp}.${format}`;
                 
                 // Chuyển đổi canvas thành data URL
                 let dataURL;
@@ -495,15 +378,34 @@
                 counter.id = 'nameCounter';
                 counter.style.color = '#666';
                 counter.style.fontSize = '12px';
+                counter.style.marginTop = '5px';
+                counter.style.display = 'block';
                 this.parentNode.appendChild(counter);
             }
             
-            counter.textContent = `${current}/${max} ký tự`;
-            
-            if (current > max * 0.9) {
-                counter.style.color = '#dc3545';
+            if (current > 0) {
+                counter.textContent = `${current}/${max} ký tự`;
+                counter.style.display = 'block';
+                
+                if (current > max * 0.8) {
+                    counter.style.color = '#ff6b35';
+                } else if (current > max * 0.6) {
+                    counter.style.color = '#ffa500';
+                } else {
+                    counter.style.color = '#666';
+                }
             } else {
-                counter.style.color = '#666';
+                counter.style.display = 'none';
+            }
+            
+            // Preview tên trong khi gõ
+            if (current > 0) {
+                // Tự động tạo QR nếu đã có nội dung
+                const textInput = document.getElementById('textInput');
+                if (textInput.value.trim()) {
+                    clearTimeout(window.qrTimeout);
+                    window.qrTimeout = setTimeout(generateQR, 500);
+                }
             }
         });
     </script>
