@@ -42,6 +42,7 @@
 
         .input-group {
             margin-bottom: 30px;
+            text-align: left;
         }
 
         label {
@@ -49,22 +50,25 @@
             margin-bottom: 10px;
             color: #555;
             font-weight: 500;
-            text-align: left;
         }
 
-        textarea {
+        input[type="text"], textarea {
             width: 100%;
             padding: 15px;
             border: 2px solid #e1e5e9;
             border-radius: 10px;
             font-size: 16px;
             resize: vertical;
-            min-height: 100px;
+            min-height: 50px;
             transition: border-color 0.3s ease;
             font-family: inherit;
         }
 
-        textarea:focus {
+        textarea {
+            min-height: 100px;
+        }
+
+        input[type="text"]:focus, textarea:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -82,7 +86,7 @@
             min-width: 120px;
         }
 
-        select, input[type="number"] {
+        select {
             width: 100%;
             padding: 10px;
             border: 2px solid #e1e5e9;
@@ -91,7 +95,7 @@
             transition: border-color 0.3s ease;
         }
 
-        select:focus, input[type="number"]:focus {
+        select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -114,10 +118,6 @@
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
         }
 
-        .generate-btn:active {
-            transform: translateY(0);
-        }
-
         .qr-result {
             margin-top: 30px;
             padding: 20px;
@@ -132,21 +132,43 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
+        .buttons-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
         .download-btn {
             background: #28a745;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 12px 20px;
             border-radius: 25px;
             font-size: 14px;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin: 10px 5px;
+            min-width: 120px;
         }
 
         .download-btn:hover {
             background: #218838;
             transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .download-btn:first-child {
+            background: #17a2b8;
+        }
+
+        .download-btn:first-child:hover {
+            background: #138496;
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+        }
+
+        .download-btn.success {
+            background: #20c997;
         }
 
         .error {
@@ -156,6 +178,13 @@
             background: #f8d7da;
             border-radius: 5px;
             display: none;
+        }
+
+        .char-counter {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            display: block;
         }
 
         @media (max-width: 600px) {
@@ -171,6 +200,11 @@
                 flex-direction: column;
                 gap: 15px;
             }
+
+            .buttons-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
     </style>
 </head>
@@ -178,6 +212,24 @@
     <div class="container">
         <h1>🔗 QR Code Generator</h1>
         
+        <!-- Nhập tên QR -->
+        <div class="input-group">
+            <label for="qrName">
+                📝 Tên QR Code (tùy chọn):
+                <small style="color: #666; font-weight: normal; margin-left: 10px;">
+                    Tên này sẽ hiển thị trong ảnh QR
+                </small>
+            </label>
+            <input 
+                type="text" 
+                id="qrName" 
+                placeholder="Ví dụ: Menu Nhà Hàng, Website Công Ty, Thông Tin Liên Hệ..."
+                maxlength="100"
+            >
+            <small class="char-counter" id="nameCounter" style="display: none;"></small>
+        </div>
+
+        <!-- Nhập nội dung QR -->
         <div class="input-group">
             <label for="textInput">Nhập nội dung cần tạo QR:</label>
             <textarea 
@@ -185,8 +237,10 @@
                 placeholder="Nhập text, URL, số điện thoại, email... ở đây"
                 maxlength="2000"
             ></textarea>
+            <small class="char-counter" id="textCounter" style="display: none;"></small>
         </div>
 
+        <!-- Tùy chọn -->
         <div class="options">
             <div class="option-group">
                 <label for="sizeSelect">Kích thước:</label>
@@ -215,12 +269,16 @@
 
         <div class="error" id="errorMsg"></div>
 
+        <!-- Kết quả QR -->
         <div class="qr-result" id="qrResult">
             <h3>Mã QR của bạn:</h3>
             <canvas id="qrCanvas" class="qr-canvas"></canvas>
-            <div>
-                <button class="download-btn" onclick="downloadQR('png')">Tải PNG</button>
-                <button class="download-btn" onclick="downloadQR('jpg')">Tải JPG</button>
+            
+            <!-- Nút thao tác: Copy Ảnh, Tải JPG, Tải PNG -->
+            <div class="buttons-container">
+                <button class="download-btn" onclick="copyImageToClipboard(this)">📋 Copy ảnh</button>
+                <button class="download-btn" onclick="downloadQR('jpg')">📸 Tải JPG</button>
+                <button class="download-btn" onclick="downloadQR('png')">🖼️ Tải PNG</button>
             </div>
         </div>
     </div>
@@ -230,10 +288,10 @@
 
         function generateQR() {
             const textInput = document.getElementById('textInput');
+            const qrName = document.getElementById('qrName');
             const sizeSelect = document.getElementById('sizeSelect');
             const errorLevel = document.getElementById('errorLevel');
             const qrResult = document.getElementById('qrResult');
-            const qrCanvas = document.getElementById('qrCanvas');
             const errorMsg = document.getElementById('errorMsg');
 
             // Ẩn thông báo lỗi
@@ -241,6 +299,7 @@
             
             // Lấy giá trị input
             const text = textInput.value.trim();
+            const name = qrName.value.trim();
             const size = parseInt(sizeSelect.value);
             const level = errorLevel.value;
 
@@ -256,15 +315,8 @@
             }
 
             try {
-                // Tạo QR code
-                qrCode = new QRious({
-                    element: qrCanvas,
-                    value: text,
-                    size: size,
-                    level: level,
-                    background: 'white',
-                    foreground: 'black'
-                });
+                // Tạo QR code với tên hiển thị trong ảnh
+                createQRWithName(text, name, size, level);
 
                 // Hiển thị kết quả
                 qrResult.style.display = 'block';
@@ -281,6 +333,98 @@
             }
         }
 
+        // Tạo QR với tên hiển thị trong ảnh
+        function createQRWithName(text, name, size, level) {
+            const qrCanvas = document.getElementById('qrCanvas');
+            
+            // Tạo QR code tạm thời
+            const tempCanvas = document.createElement('canvas');
+            const tempQR = new QRious({
+                element: tempCanvas,
+                value: text,
+                size: size,
+                level: level,
+                background: 'white',
+                foreground: 'black'
+            });
+
+            // Tính toán kích thước canvas cuối cùng
+            const padding = 40;
+            const nameHeight = name ? 80 : 0; // Chiều cao cho tên
+            const finalWidth = size + (padding * 2);
+            const finalHeight = size + nameHeight + (padding * 2);
+
+            // Thiết lập canvas chính
+            qrCanvas.width = finalWidth;
+            qrCanvas.height = finalHeight;
+            const ctx = qrCanvas.getContext('2d');
+
+            // Vẽ nền trắng
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, finalWidth, finalHeight);
+
+            // Vẽ tên QR ở phía trên (nếu có)
+            if (name) {
+                // Vẽ background cho vùng tên
+                ctx.fillStyle = 'rgba(102, 126, 234, 0.08)';
+                ctx.fillRect(10, 10, finalWidth - 20, nameHeight - 10);
+                
+                // Thiết lập font
+                ctx.fillStyle = '#333333';
+                ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Xử lý text dài - word wrap
+                const maxWidth = finalWidth - (padding * 2);
+                const words = name.split(' ');
+                let lines = [];
+                let currentLine = '';
+                
+                for (let i = 0; i < words.length; i++) {
+                    const testLine = currentLine + words[i] + ' ';
+                    const metrics = ctx.measureText(testLine);
+                    
+                    if (metrics.width > maxWidth && i > 0) {
+                        lines.push(currentLine.trim());
+                        currentLine = words[i] + ' ';
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                lines.push(currentLine.trim());
+                
+                // Vẽ các dòng text
+                const lineHeight = 28;
+                const startY = padding + (nameHeight - padding) / 2 - (lines.length - 1) * lineHeight / 2;
+                
+                lines.forEach((line, index) => {
+                    ctx.fillText(line, finalWidth / 2, startY + (index * lineHeight));
+                });
+                
+                // Vẽ đường phân cách
+                ctx.strokeStyle = 'rgba(102, 126, 234, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(padding, nameHeight + padding/2);
+                ctx.lineTo(finalWidth - padding, nameHeight + padding/2);
+                ctx.stroke();
+            }
+
+            // Vẽ QR code
+            const qrY = nameHeight + padding;
+            ctx.drawImage(tempCanvas, padding, qrY, size, size);
+
+            // Viền cho QR
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(padding, qrY, size, size);
+
+            // Lưu reference
+            qrCode = { canvas: qrCanvas };
+        }
+
+        // Tải xuống file
         function downloadQR(format) {
             if (!qrCode) {
                 showError('Chưa có QR code để tải xuống!');
@@ -288,14 +432,22 @@
             }
 
             try {
-                const canvas = document.getElementById('qrCanvas');
+                const canvas = qrCode.canvas;
+                const qrName = document.getElementById('qrName').value.trim();
                 const link = document.createElement('a');
                 
-                // Tạo tên file với timestamp
+                // Tạo tên file từ tên QR
                 const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-                const filename = `qrcode_${timestamp}.${format}`;
+                let filename;
                 
-                // Chuyển đổi canvas thành data URL
+                if (qrName) {
+                    const safeName = qrName.replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_');
+                    filename = `${safeName}_${timestamp}.${format}`;
+                } else {
+                    filename = `qrcode_${timestamp}.${format}`;
+                }
+                
+                // Convert canvas to data URL
                 let dataURL;
                 if (format === 'png') {
                     dataURL = canvas.toDataURL('image/png');
@@ -303,7 +455,7 @@
                     dataURL = canvas.toDataURL('image/jpeg', 0.9);
                 }
                 
-                // Tải xuống
+                // Download
                 link.download = filename;
                 link.href = dataURL;
                 document.body.appendChild(link);
@@ -312,100 +464,132 @@
                 
             } catch (error) {
                 showError('Có lỗi xảy ra khi tải xuống: ' + error.message);
-                console.error('Download Error:', error);
             }
         }
 
+        // Copy ảnh vào clipboard
+        async function copyImageToClipboard(button) {
+            if (!qrCode) {
+                showError('Chưa có QR code để copy!');
+                return;
+            }
+
+            try {
+                const canvas = qrCode.canvas;
+                
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        showError('Không thể tạo ảnh để copy!');
+                        return;
+                    }
+
+                    try {
+                        const item = new ClipboardItem({
+                            'image/png': blob
+                        });
+                        
+                        await navigator.clipboard.write([item]);
+                        
+                        // Hiệu ứng thành công
+                        const originalText = button.textContent;
+                        button.textContent = '✅ Đã copy ảnh!';
+                        button.classList.add('success');
+                        
+                        setTimeout(() => {
+                            button.textContent = originalText;
+                            button.classList.remove('success');
+                        }, 2000);
+                        
+                    } catch (clipboardError) {
+                        // Fallback: Mở popup với ảnh để copy thủ công
+                        const dataURL = canvas.toDataURL('image/png');
+                        const newWindow = window.open('', '_blank', 'width=600,height=700');
+                        newWindow.document.write(`
+                            <html>
+                                <head><title>QR Code - Copy Image</title></head>
+                                <body style="margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f0f0f0; font-family: Arial;">
+                                    <div style="text-align:center; background:white; padding:30px; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1);">
+                                        <h2 style="margin-bottom:20px; color:#333;">Copy QR Code Image</h2>
+                                        <p style="margin-bottom:20px; color:#666;">Click chuột phải vào ảnh và chọn "Copy Image"</p>
+                                        <img src="${dataURL}" style="border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.1); max-width:100%;" />
+                                        <p style="margin-top:20px; color:#999; font-size:14px;">Hoặc kéo thả ảnh để lưu vào máy tính</p>
+                                    </div>
+                                </body>
+                            </html>
+                        `);
+                        
+                        showError('Trình duyệt không hỗ trợ copy ảnh tự động. Đã mở cửa sổ mới để bạn copy thủ công.');
+                    }
+                }, 'image/png');
+                
+            } catch (error) {
+                showError('Có lỗi xảy ra khi copy ảnh: ' + error.message);
+            }
+        }
+
+        // Hiển thị lỗi
         function showError(message) {
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.textContent = message;
-            errorMsg.style.display = 'block';
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
         }
 
-        // Tự động tạo QR khi người dùng nhập (debounced)
-        let timeout;
-        document.getElementById('textInput').addEventListener('input', function() {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                if (this.value.trim()) {
-                    generateQR();
-                } else {
-                    document.getElementById('qrResult').style.display = 'none';
-                }
-            }, 1000);
-        });
-
-        // Cho phép tạo QR bằng phím Enter (Ctrl+Enter trong textarea)
-        document.getElementById('textInput').addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'Enter') {
-                generateQR();
-            }
-        });
-
-        // Hiển thị số ký tự đang nhập cho textarea
-        document.getElementById('textInput').addEventListener('input', function() {
-            const current = this.value.length;
-            const max = 2000;
-            
-            // Tạo hoặc cập nhật counter
-            let counter = document.getElementById('charCounter');
-            if (!counter) {
-                counter = document.createElement('small');
-                counter.id = 'charCounter';
-                counter.style.color = '#666';
-                counter.style.fontSize = '12px';
-                this.parentNode.appendChild(counter);
-            }
-            
-            counter.textContent = `${current}/${max} ký tự`;
-            
-            if (current > max * 0.9) {
-                counter.style.color = '#dc3545';
-            } else {
-                counter.style.color = '#666';
-            }
-        });
-
-        // Hiển thị số ký tự đang nhập cho tên QR
+        // Character counters
         document.getElementById('qrName').addEventListener('input', function() {
-            const current = this.value.length;
-            const max = 100;
-            
-            // Tạo hoặc cập nhật counter cho tên QR
-            let counter = document.getElementById('nameCounter');
-            if (!counter) {
-                counter = document.createElement('small');
-                counter.id = 'nameCounter';
-                counter.style.color = '#666';
-                counter.style.fontSize = '12px';
-                counter.style.marginTop = '5px';
-                counter.style.display = 'block';
-                this.parentNode.appendChild(counter);
-            }
+            updateCharCounter(this, 'nameCounter', 100);
+        });
+
+        document.getElementById('textInput').addEventListener('input', function() {
+            updateCharCounter(this, 'textCounter', 2000);
+        });
+
+        function updateCharCounter(input, counterId, maxLength) {
+            const current = input.value.length;
+            let counter = document.getElementById(counterId);
             
             if (current > 0) {
-                counter.textContent = `${current}/${max} ký tự`;
+                if (!counter) {
+                    counter = document.createElement('small');
+                    counter.id = counterId;
+                    counter.className = 'char-counter';
+                    input.parentNode.appendChild(counter);
+                }
+                
+                counter.textContent = `${current}/${maxLength} ký tự`;
                 counter.style.display = 'block';
                 
-                if (current > max * 0.8) {
-                    counter.style.color = '#ff6b35';
-                } else if (current > max * 0.6) {
-                    counter.style.color = '#ffa500';
+                if (current > maxLength * 0.8) {
+                    counter.style.color = '#dc3545';
+                } else if (current > maxLength * 0.6) {
+                    counter.style.color = '#ffc107';
                 } else {
                     counter.style.color = '#666';
                 }
             } else {
-                counter.style.display = 'none';
+                if (counter) counter.style.display = 'none';
             }
-            
-            // Preview tên trong khi gõ
-            if (current > 0) {
-                // Tự động tạo QR nếu đã có nội dung
-                const textInput = document.getElementById('textInput');
-                if (textInput.value.trim()) {
-                    clearTimeout(window.qrTimeout);
-                    window.qrTimeout = setTimeout(generateQR, 500);
-                }
+        }
+
+        // Auto-generate khi nhập
+        let autoGenTimeout;
+        ['textInput', 'qrName'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function() {
+                clearTimeout(autoGenTimeout);
+                autoGenTimeout = setTimeout(() => {
+                    const textInput = document.getElementById('textInput');
+                    if (textInput.value.trim()) {
+                        generateQR();
+                    } else {
+                        document.getElementById('qrResult').style.display = 'none';
+                    }
+                }, 800);
+            });
+        });
+
+        // Enter để tạo QR
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                generateQR();
             }
         });
     </script>
